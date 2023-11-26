@@ -2,5 +2,5 @@ DATA_DIRECTORY = "data/audio/"
 IMAGES_DIRECTORY = "images/"
 MODEL_DIRECTORY = "model/"
 
-BATCH_SIZE = 1
+BATCH_SIZE = 128
 NUM_EPOCHS = 40
