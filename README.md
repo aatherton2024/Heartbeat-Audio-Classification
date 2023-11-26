@@ -11,6 +11,7 @@ Project Flow:
 7. Win CS project of the year 🔴
 
 Considerations:
+ - CAN ALSO ENCODE AUDIO FILES AS TENSORS, THEN TRAIN ON THAT
  - Dataset is too small to sufficiently train model, will likely need to bag/boost or provide synthetic or additional data
  - Need to train on several model architectures and on other ML frameworks, such as random forests
  - Dataset will (potentially) need to be regenerated with shorter recordings padded to max recording length
