@@ -5,7 +5,7 @@ Project Flow:
 1. Generate images ✅
 2. Create hugginface dataset with train test splits ✅
 3. Make model class from generic PyTorch framework 🟡
-4. Test model 🔴
+4. Test model 🟡
 5. Use other model frameworks and play around with hyperparameters 🔴
 6. Write paper 🔴
 7. Win CS project of the year 🔴
