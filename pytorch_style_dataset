@@ -1,0 +1,64 @@
+import pandas as pd
+import numpy as np
+import librosa
+import matplotlib.pyplot as plt
+from PIL import Image
+from datasets import Dataset
+from tqdm import tqdm
+import os
+
+labels = pd.read_csv('data/DHD/labels.csv')
+# Initialize lists to hold spectrograms and labels
+spectrograms = []
+label_list = []
+
+# Define a fixed length for the spectrograms
+fixed_length = 1000  # You may need to adjust this value
+
+# Iterate over each audio file
+for index, row in tqdm(labels.iterrows()):
+    # Load the audio file
+    filename = 'data/DHD/audio/' + row['filename']
+    audio, sample_rate = librosa.load(filename, sr=None)
+
+    # Generate the spectrogram
+    spectrogram = librosa.feature.melspectrogram(y=audio, sr=sample_rate)
+    spectrogram = librosa.power_to_db(spectrogram)
+    
+    if spectrogram.shape[1] > fixed_length:
+        spectrogram = spectrogram[:, :fixed_length]
+    else:
+        padding = fixed_length - spectrogram.shape[1]
+        spectrogram = np.pad(spectrogram, ((0, 0), (0, padding)), 'constant')
+
+    # Append the spectrogram and label to the respective lists
+
+    if filename.startswith("murmur"): label = "murmur"
+    elif filename.startswith("extrahls"): label = "extrahls"
+    elif filename.startswith("extrastole"): label = "extrastole"
+    elif filename.startswith("artifact"): label = "artifact"
+    else: label = "normal"
+
+    image_folder = f"images/train/{label}/"
+    image_path = f"images/train/{label}/{row['filename'][:-4]}.png"
+
+    #if not os.path.isfile(image_path):
+    print("creating new image file")
+    if not os.path.isdir(image_folder):
+        os.makedirs(image_folder)
+        plt.figure(figsize=(10, 4))
+        librosa.display.specshow(spectrogram, y_axis='mel', fmax=8000, x_axis='time')
+        plt.title('Mel Spectrogram')
+        plt.colorbar(format='%+2.0f dB')
+        plt.savefig(image_path)
+
+# spectrograms = np.array(spectrograms)
+# label_list = np.array(label_list)
+# images = [Image.fromarray(spectrogram) for spectrogram in spectrograms]
+# print(images[0])
+# imgplot = plt.imshow(images[0])
+# plt.show()
+# plt.savefig("foo2.png")
+# dataset_dict = {"image": images, "classification": label_list}
+# hf_ds = Dataset.from_dict(dataset_dict)
+#hf_ds.push_to_hub("aatherton2024/ds_attemp_many")
