@@ -5,7 +5,6 @@ from tqdm import tqdm
 from contstants import DATA_DIRECTORY, IMAGES_DIRECTORY
 from create_images import plotstft
 from datasets import load_dataset
-import librosa
 
 def generate_all_images(directory):
 

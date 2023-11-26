@@ -18,6 +18,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+#comment
 checkpoint = "google/vit-base-patch16-224-in21k"
 image_processor = AutoImageProcessor.from_pretrained(checkpoint)
 
