@@ -1,8 +1,6 @@
-from datasets import Dataset
-import pandas as pd
 import os
 from tqdm import tqdm
-from contstants import DATA_DIRECTORY, IMAGES_DIRECTORY
+from constants import DATA_DIRECTORY, IMAGES_DIRECTORY, HF_DS_PATH
 from create_images import plotstft
 from datasets import load_dataset
 
@@ -29,6 +27,4 @@ def create_image_dataset():
 
     dataset = load_dataset("imagefolder", data_dir="images/")
     dataset = dataset["train"].train_test_split(test_size=0.2, stratify_by_column="label")
-    dataset.push_to_hub("aatherton2024/heartbeat_images_final_project")
-
-ds = create_image_dataset()
+    dataset.push_to_hub(HF_DS_PATH)

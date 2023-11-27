@@ -3,14 +3,15 @@ Computer Vision ML Task on Hearbeat Noise Dataset
 
 Project Flow:
 1. Generate images ✅
-2. Create huggingface dataset with train test splits ✅
+2. Create hugginface dataset with train test splits ✅
 3. Make model class from generic PyTorch framework 🟡
-4. Test model 🔴
+4. Test model 🟡
 5. Use other model frameworks and play around with hyperparameters 🔴
 6. Write paper 🔴
 7. Win CS project of the year 🔴
 
 Considerations:
+ - CAN ALSO ENCODE AUDIO FILES AS TENSORS, THEN TRAIN ON THAT
  - Dataset is too small to sufficiently train model, will likely need to bag/boost or provide synthetic or additional data
  - Need to train on several model architectures and on other ML frameworks, such as random forests
  - Dataset will (potentially) need to be regenerated with shorter recordings padded to max recording length
