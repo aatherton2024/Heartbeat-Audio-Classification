@@ -5,6 +5,10 @@ import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
+import numpy as np
+from sklearn.metrics import confusion_matrix
+import pandas as pd
+import seaborn as sn
 
 """
 Training loop for cnn
@@ -41,8 +45,8 @@ Test loop for model... currently returns accuracy
 #TODO return a better evaluation metric
 """
 def test_model(net, dataloader):
-    correct = 0
-    total = 0
+    total = 0.0
+    correct = 0.0
     # since we're not training, we don't need to calculate the gradients for our outputs
     with torch.no_grad():
         for data in dataloader:
@@ -56,6 +60,37 @@ def test_model(net, dataloader):
             correct += (predicted == labels).sum().item()
 
     print(f'Accuracy of the network on the test images: {100 * correct // total} %')
+
+"""
+Test loop for model to return a confusion matrix
+#TODO make it work lmao
+"""
+def test_model_conf_mat(net, dataloader):
+    y_pred = []
+    y_true = []
+
+    # iterate over test data
+    with torch.no_grad():
+        for data in dataloader:
+            images = data["pixel_values"]
+            labels = data["label"]
+            output = net(images)
+            output = (torch.max(torch.exp(output), 1)[1]).data.cpu().numpy()
+            y_pred.extend(output) # Save Prediction
+            
+            labels = labels.data.cpu().numpy()
+            y_true.extend(labels) # Save Truth
+
+    # constant for classes
+    classes = ('normal', 'murmur', 'artifact', 'extrahls', 'extrastole')
+
+    # Build confusion matrix
+    cf_matrix = confusion_matrix(y_true, y_pred)
+    df_cm = pd.DataFrame(cf_matrix / np.sum(cf_matrix, axis=1)[:, None], index = [i for i in classes],
+                        columns = [i for i in classes])
+    plt.figure(figsize = (12,7))
+    sn.heatmap(df_cm, annot=True)
+    plt.savefig('output.png')
 
 """
 Method to display tensor as a png

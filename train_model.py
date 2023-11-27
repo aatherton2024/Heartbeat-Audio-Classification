@@ -1,7 +1,7 @@
 from constants import NUM_EPOCHS, HF_DS_PATH, BATCH_SIZE, DATASET_EXISTS
 from pytorch_cnn import Net
 from datasets import load_dataset
-from train_utils import train_model, test_model, save_model, preprocess_data
+from train_utils import train_model, test_model, save_model, preprocess_data, test_model_conf_mat
 from create_dataset import create_image_dataset
 
 #Create dataset if not already created
@@ -17,4 +17,5 @@ trainloader, testloader = preprocess_data(dataset, BATCH_SIZE)
 net = Net()
 train_model(net, trainloader, NUM_EPOCHS)
 test_model(net, testloader)
+test_model_conf_mat(net, testloader)
 save_model(net)
