@@ -1,8 +1,13 @@
 import os
 from tqdm import tqdm
 from constants import DATA_DIRECTORY, IMAGES_DIRECTORY, HF_DS_PATH
-from create_images import plotstft
+from create_images import make_spectogram
 from datasets import load_dataset
+import librosa
+import librosa.display
+import matplotlib.pyplot as plt
+import numpy as np
+from constants import DATA_DIRECTORY
 
 def generate_all_images(directory):
 
@@ -21,7 +26,8 @@ def generate_all_images(directory):
             print("creating new image file")
             if not os.path.isdir(image_folder):
                 os.makedirs(image_folder)
-            plotstft(file_path, plotpath=image_path) #generate image
+            #plotstft(file_path, plotpath=image_path) #generate image
+            make_spectogram(file_path, image_path)
 
 def create_image_dataset():
 
