@@ -6,9 +6,13 @@ from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, accuracy_score
 import pandas as pd
 import seaborn as sn
+from sklearn.ensemble import RandomForestClassifier
+from PIL import Image
+from matplotlib import cm
+import copy
 
 """
 Training loop for cnn
@@ -60,6 +64,11 @@ def test_model(net, dataloader):
             correct += (predicted == labels).sum().item()
 
     print(f'Accuracy of the network on the test images: {100 * correct // total} %')
+
+def test_rf(model, xtest, ytest):
+    predictions = model.predict(xtest)
+    print(accuracy_score(predictions, ytest))
+    print(confusion_matrix(predictions, ytest))
 
 """
 Test loop for model to return a confusion matrix
@@ -127,6 +136,40 @@ def preprocess_data(dataset, batch_size=4):
     trainloader = DataLoader(dataset["train"], batch_size=batch_size)
     testloader = DataLoader(dataset["test"], batch_size=batch_size)
     return trainloader, testloader                                                                                           
+
+def preprocess_data_random_forest(dataset):
+    i1 = np.asarray(dataset["train"][0]["image"])
+    print(i1.size)
+    print(i1.shape)
+    data = Image.fromarray(i1) 
+
+    def resize(image):
+        #print(image)
+        c = copy.copy(image)
+        imResize = np.resize(c, (1159,645))
+        print(imResize)
+        data = Image.fromarray(imResize) 
+        data.save('foo2.png') 
+        return imResize
+    
+    resize(i1)
+
+    # def transforms(examples):
+    #     #c = copy.copy(examples["image"])
+
+    #     examples["pixel_values"] = resize(np.asarray(examples["image"]))
+    #     del examples["image"]
+    #     return examples
+
+    # dataset = dataset.map(transforms, batched=False)
+
+    # print(dataset)
+    # print(dataset["train"])
+    # print(dataset["train"][0])
+    # print(dataset["train"][0]["pixel_values"])
+    
+    return dataset["train"], dataset["test"]
+
 
 """
 Method to save model state dict to disk
