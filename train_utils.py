@@ -13,6 +13,7 @@ from sklearn.ensemble import RandomForestClassifier
 from PIL import Image
 from matplotlib import cm
 import copy
+#from skimage.transform import resize
 
 """
 Training loop for cnn
@@ -135,34 +136,37 @@ def preprocess_data(dataset, batch_size=4):
 
     trainloader = DataLoader(dataset["train"], batch_size=batch_size)
     testloader = DataLoader(dataset["test"], batch_size=batch_size)
-    return trainloader, testloader                                                                                           
+    return trainloader, testloader    
+
+#this resizes the image and converts it to a numpy array                                                                                       
 
 def preprocess_data_random_forest(dataset):
-    i1 = np.asarray(dataset["train"][0]["image"])
-    print(i1.size)
-    print(i1.shape)
-    data = Image.fromarray(i1) 
+    # i1 = dataset["train"][0]["image"]
+    # #Rresize the image before converting to a numpy array
+    # i1 = i1.resize((1159,645))
+    # #convert to an array
+    # i1 = np.asarray(i1)
+    # #check correctness
+    # print("after")
+    # print(i1.size)
+    # print(i1.shape)
+    # #verify that the array still converts back to an image correctly
+    # data = Image.fromarray(i1) 
+    # data.save('spectrogram3.png')
+    # #this is working, image to array and back 
 
-    def resize(image):
-        #print(image)
-        c = copy.copy(image)
-        imResize = np.resize(c, (1159,645))
-        print(imResize)
-        data = Image.fromarray(imResize) 
-        data.save('foo2.png') 
-        return imResize
-    
-    resize(i1)
 
-    # def transforms(examples):
-    #     #c = copy.copy(examples["image"])
+    def transforms(examples):
+        i1 = examples["image"]
+        i1 = i1.resize((1159,645))
+        i1 = np.asarray(i1)
+        data = Image.fromarray(i1) 
+        examples["pixel_values"] = data
+        del examples["image"]
+        return examples
 
-    #     examples["pixel_values"] = resize(np.asarray(examples["image"]))
-    #     del examples["image"]
-    #     return examples
-
-    # dataset = dataset.map(transforms, batched=False)
-
+    dataset = dataset.map(transforms, batched=False)
+    dataset.set_format(type="np", columns=["label", "pixel_values"])
     # print(dataset)
     # print(dataset["train"])
     # print(dataset["train"][0])
