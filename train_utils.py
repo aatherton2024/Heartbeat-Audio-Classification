@@ -13,6 +13,9 @@ from sklearn.ensemble import RandomForestClassifier
 from PIL import Image
 from matplotlib import cm
 import copy
+from constants import NUM_EPOCHS, BATCH_SIZE, NUM_FOLDS
+from sklearn.model_selection import KFold
+from pytorch_cnn import Net
 #from skimage.transform import resize
 
 """
@@ -45,6 +48,68 @@ def train_model(net, dataloader, epochs=20):
 
     print('Finished Training')
 
+
+def train_model_with_cv(dataset, num_epochs=NUM_EPOCHS, batch_size=BATCH_SIZE, num_folds=NUM_FOLDS):
+    def reset_weights(m):
+        '''
+            Try resetting model weights to avoid
+            weight leakage.
+        '''
+        for layer in m.children():
+            if hasattr(layer, 'reset_parameters'):
+                print(f'Reset trainable parameters of layer = {layer}')
+                layer.reset_parameters()
+    
+    # For fold results
+    results = {}
+    
+    # Set fixed random number seed
+    torch.manual_seed(42)
+    
+    # Define the K-fold Cross Validator
+    kfold = KFold(n_splits=num_folds, shuffle=True)
+        
+    # Start print
+    print('--------------------------------')
+
+    # K-fold Cross Validation model evaluation
+    for fold, (train_ids, validation_ids) in enumerate(kfold.split(dataset["train"])):
+        # Print
+        print(f'FOLD {fold}')
+        print('--------------------------------')
+        
+        trainloader, validationloader = cross_validation_dataloaders(dataset["train"], train_ids, validation_ids, batch_size)
+        
+        # Init the neural network
+        network = Net()
+        network.apply(reset_weights)
+        
+        train_model(network, trainloader, num_epochs)
+                
+        # Process is complete.
+        print('Training process has finished. Saving trained model.')
+
+        # Print about testing
+        print('Starting testing')
+        
+        # Saving the model
+        save_path = f'fold_saves/model-fold-{fold}.pth'
+        torch.save(network.state_dict(), save_path)
+
+        results[fold] = test_model(network, validationloader)
+        
+    # Print fold results
+    print(f'K-FOLD CROSS VALIDATION RESULTS FOR {num_folds} FOLDS')
+    print('--------------------------------')
+    sum = 0.0
+    for key, value in results.items():
+        print(f'Fold {key}: {value} %')
+        sum += value
+    print(f'Average: {sum/len(results.items())} %')
+
+
+
+
 """
 Test loop for model... currently returns accuracy
 #TODO return a better evaluation metric
@@ -65,6 +130,7 @@ def test_model(net, dataloader):
             correct += (predicted == labels).sum().item()
 
     print(f'Accuracy of the network on the test images: {100 * correct // total} %')
+    return 100 * correct // total
 
 def test_rf(model, xtest, ytest):
     predictions = model.predict(xtest)
@@ -137,6 +203,54 @@ def preprocess_data(dataset, batch_size=4):
     trainloader = DataLoader(dataset["train"], batch_size=batch_size)
     testloader = DataLoader(dataset["test"], batch_size=batch_size)
     return trainloader, testloader    
+
+
+def preprocess_data_2(dataset, batch_size=4):
+    transform = Compose([ToTensor()])
+ 
+    def transforms(examples):
+        rgb = [img.convert("RGB") for img in examples["image"]]
+        resized = [img.resize((1159,645)) for img in rgb]
+        transformed = [transform(img) for img in resized]
+        examples["pixel_values"] = transformed
+        del examples["image"]
+        return examples
+
+    dataset = dataset.map(transforms, batched=True)
+    dataset.set_format(type="torch", columns=["label", "pixel_values"])
+
+    trainloader = DataLoader(dataset["train"], batch_size=batch_size)
+    testloader = DataLoader(dataset["test"], batch_size=batch_size)
+    return dataset, trainloader, testloader  
+
+def generic_preprocess_data(dataset):
+    transform = Compose([ToTensor()])
+ 
+    def transforms(examples):
+        rgb = [img.convert("RGB") for img in examples["image"]]
+        resized = [img.resize((1159,645)) for img in rgb]
+        transformed = [transform(img) for img in resized]
+        examples["pixel_values"] = transformed
+        del examples["image"]
+        return examples
+
+    dataset = dataset.map(transforms, batched=True)
+    dataset.set_format(type="torch", columns=["label", "pixel_values"])
+    return dataset
+
+def cross_validation_dataloaders(dataset, train_ids, validation_ids, batch_size):
+    train_subsampler = torch.utils.data.SubsetRandomSampler(train_ids)
+    validation_subsampler = torch.utils.data.SubsetRandomSampler(validation_ids)
+    
+    # Define data loaders for training and testing data in this fold
+    trainloader = DataLoader(
+                      dataset, 
+                      batch_size=batch_size, sampler=train_subsampler)
+    validationloader = DataLoader(
+                      dataset,
+                      batch_size=batch_size, sampler=validation_subsampler)
+    return trainloader, validationloader
+
 
 #this resizes the image and converts it to a numpy array                                                                                       
 
