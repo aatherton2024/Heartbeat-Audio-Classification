@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from constants import DATA_DIRECTORY
 
+"""
+Method to create spectrograms for all audio files
+"""
 def generate_all_images(directory):
 
     for filename in tqdm(os.listdir(directory)):
@@ -26,9 +29,11 @@ def generate_all_images(directory):
             print("creating new image file")
             if not os.path.isdir(image_folder):
                 os.makedirs(image_folder)
-            #plotstft(file_path, plotpath=image_path) #generate image
             make_spectogram(file_path, image_path)
 
+"""
+Method to make a HF dataset from image folder
+"""
 def create_image_dataset():
 
     dataset = load_dataset("imagefolder", data_dir="images/")
