@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from torchvision.transforms import RandomResizedCrop, Compose, Normalize, ToTensor
+from torchvision.transforms import RandomResizedCrop, Compose, Normalize, ToTensor, GaussianBlur
 from transformers import AutoImageProcessor
 import torch
 from torch.utils.data import DataLoader
@@ -16,12 +16,15 @@ import copy
 from constants import NUM_EPOCHS, BATCH_SIZE, NUM_FOLDS
 from sklearn.model_selection import KFold
 from pytorch_cnn import Net
+import os
+import skimage as ski
 #from skimage.transform import resize
 
 """
 Training loop for cnn
 """
-def train_model(net, dataloader, epochs=20):
+def train_model(net, dataloader, epochs=NUM_EPOCHS, current_fold=0, validationloader=None, results=dict()):
+    print(f"Training model of fold {current_fold+1}")
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
@@ -45,10 +48,31 @@ def train_model(net, dataloader, epochs=20):
             # print statistics
             running_loss += loss.item()
         print(f'Epoch {epoch + 1} loss: {running_loss}')
+        if (epoch + 1) % 5 == 0: 
+            file_save_directory = f"cnn_model_checkpoints/fold_{current_fold + 1}/"
+            file_save_path = f"cnn_model_checkpoints/fold_{current_fold + 1}/epoch_{epoch+1}.pt"
+            image_save_directory = f"conf_matrics/fold_{current_fold+1}/"
+            image_save_path = f"conf_matrics/fold_{current_fold+1}/epoch_{epoch+1}.png"
 
+            if not os.path.isdir(file_save_directory):
+                os.makedirs(file_save_directory)
+            if not os.path.isdir(image_save_directory):
+                os.makedirs(image_save_directory)
+
+            save_model(net, save_path=file_save_path)
+            try:
+                score = test_model_conf_mat(net, validationloader, image_save_path)
+            except:
+                score = 60.0
+            results[current_fold + 1][epoch + 1] = score
+            print(f"Model of fold {current_fold+1} had score {score} on epoch {epoch+1}")
+            
     print('Finished Training')
+    return results
 
-
+"""
+Function to train CNN models using cross validation
+"""
 def train_model_with_cv(dataset, num_epochs=NUM_EPOCHS, batch_size=BATCH_SIZE, num_folds=NUM_FOLDS):
     def reset_weights(m):
         '''
@@ -61,7 +85,7 @@ def train_model_with_cv(dataset, num_epochs=NUM_EPOCHS, batch_size=BATCH_SIZE, n
                 layer.reset_parameters()
     
     # For fold results
-    results = {}
+    results = {fold + 1: dict() for fold in range(num_folds)}
     
     # Set fixed random number seed
     torch.manual_seed(42)
@@ -84,7 +108,7 @@ def train_model_with_cv(dataset, num_epochs=NUM_EPOCHS, batch_size=BATCH_SIZE, n
         network = Net()
         network.apply(reset_weights)
         
-        train_model(network, trainloader, num_epochs)
+        train_model(network, trainloader, num_epochs, fold, validationloader, results)
                 
         # Process is complete.
         print('Training process has finished. Saving trained model.')
@@ -92,12 +116,8 @@ def train_model_with_cv(dataset, num_epochs=NUM_EPOCHS, batch_size=BATCH_SIZE, n
         # Print about testing
         print('Starting testing')
         
-        # Saving the model
-        save_path = f'fold_saves/model-fold-{fold}.pth'
-        torch.save(network.state_dict(), save_path)
 
-        results[fold] = test_model(network, validationloader)
-        
+    print(results)
     # Print fold results
     print(f'K-FOLD CROSS VALIDATION RESULTS FOR {num_folds} FOLDS')
     print('--------------------------------')
@@ -108,42 +128,22 @@ def train_model_with_cv(dataset, num_epochs=NUM_EPOCHS, batch_size=BATCH_SIZE, n
     print(f'Average: {sum/len(results.items())} %')
 
 
-
-
 """
-Test loop for model... currently returns accuracy
-#TODO return a better evaluation metric
+Method to test random forest
 """
-def test_model(net, dataloader):
-    total = 0.0
-    correct = 0.0
-    # since we're not training, we don't need to calculate the gradients for our outputs
-    with torch.no_grad():
-        for data in dataloader:
-            images = data["pixel_values"]
-            labels = data["label"]
-            # calculate outputs by running images through the network
-            outputs = net(images)
-            # the class with the highest energy is what we choose as prediction
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-
-    print(f'Accuracy of the network on the test images: {100 * correct // total} %')
-    return 100 * correct // total
-
 def test_rf(model, xtest, ytest):
     predictions = model.predict(xtest)
     print(accuracy_score(predictions, ytest))
     print(confusion_matrix(predictions, ytest))
 
 """
-Test loop for model to return a confusion matrix
-#TODO make it work lmao
+Test CNN and generate confidence matrix
 """
-def test_model_conf_mat(net, dataloader):
+def test_model_conf_mat(net, dataloader, save_location="output.png"):
     y_pred = []
     y_true = []
+    total = 0.0
+    correct = 0.0
 
     # iterate over test data
     with torch.no_grad():
@@ -151,6 +151,10 @@ def test_model_conf_mat(net, dataloader):
             images = data["pixel_values"]
             labels = data["label"]
             output = net(images)
+            _, predicted = torch.max(output.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
             output = (torch.max(torch.exp(output), 1)[1]).data.cpu().numpy()
             y_pred.extend(output) # Save Prediction
             
@@ -158,7 +162,7 @@ def test_model_conf_mat(net, dataloader):
             y_true.extend(labels) # Save Truth
 
     # constant for classes
-    classes = ('normal', 'murmur', 'artifact', 'extrahls', 'extrastole')
+    classes = ('artifact', 'extrahls', 'extrastole', 'murmur', 'normal')
 
     # Build confusion matrix
     cf_matrix = confusion_matrix(y_true, y_pred)
@@ -166,46 +170,24 @@ def test_model_conf_mat(net, dataloader):
                         columns = [i for i in classes])
     plt.figure(figsize = (12,7))
     sn.heatmap(df_cm, annot=True)
-    plt.savefig('output.png')
+    plt.savefig(save_location)
+    print(f'Accuracy of the network on the test images: {100 * correct // total} %')
+    return 100 * correct // total
 
 """
 Method to display tensor as a png
 """
 def img_show(img):
     tensor_image = img
-    print(type(tensor_image), tensor_image.shape)
     tensor_image = tensor_image.view(tensor_image.shape[2], tensor_image.shape[0], tensor_image.shape[1])
-    print(type(tensor_image), tensor_image.shape)
     tensor_image = tensor_image.view(tensor_image.shape[2], tensor_image.shape[0], tensor_image.shape[1])
-    print(type(tensor_image), tensor_image.shape)
     plt.imshow(tensor_image)
     plt.show()
 
 """
 Normalize and resize images, convert to tensors, return dataloaders
-"""
+""" 
 def preprocess_data(dataset, batch_size=4):
-    checkpoint = "google/vit-base-patch16-224-in21k"
-    image_processor = AutoImageProcessor.from_pretrained(checkpoint)
-
-    normalize = Normalize(mean=image_processor.image_mean, std=image_processor.image_std)
-    size = (image_processor.size["height"], image_processor.size["width"])
-    _transforms = Compose([RandomResizedCrop(size), ToTensor(), normalize])
-
-    def transforms(examples):
-        examples["pixel_values"] = [_transforms(img.convert("RGB")) for img in examples["image"]]
-        del examples["image"]
-        return examples
-
-    dataset = dataset.map(transforms, batched=True)
-    dataset.set_format(type="torch", columns=["label", "pixel_values"])
-
-    trainloader = DataLoader(dataset["train"], batch_size=batch_size)
-    testloader = DataLoader(dataset["test"], batch_size=batch_size)
-    return trainloader, testloader    
-
-
-def preprocess_data_2(dataset, batch_size=4):
     transform = Compose([ToTensor()])
  
     def transforms(examples):
@@ -223,53 +205,43 @@ def preprocess_data_2(dataset, batch_size=4):
     testloader = DataLoader(dataset["test"], batch_size=batch_size)
     return dataset, trainloader, testloader  
 
-def generic_preprocess_data(dataset):
+"""
+Normalize and resize images and add gaussian blur, convert to tensors, return dataloaders
+"""
+def preprocess_data_with_gaussian_noise(dataset, batch_size=4):
     transform = Compose([ToTensor()])
  
     def transforms(examples):
         rgb = [img.convert("RGB") for img in examples["image"]]
         resized = [img.resize((1159,645)) for img in rgb]
         transformed = [transform(img) for img in resized]
-        examples["pixel_values"] = transformed
+        transformed2 = [ski.filters.gaussian(img, sigma=(3.0, 3.0), truncate=3.5, channel_axis=-1) for img in transformed]
+        examples["pixel_values"] = transformed2
         del examples["image"]
         return examples
 
     dataset = dataset.map(transforms, batched=True)
     dataset.set_format(type="torch", columns=["label", "pixel_values"])
-    return dataset
+    trainloader = DataLoader(dataset["train"], batch_size=batch_size)
+    testloader = DataLoader(dataset["test"], batch_size=batch_size)
+    return dataset, trainloader, testloader 
 
+"""
+Method to create data loaders for cross validation
+"""
 def cross_validation_dataloaders(dataset, train_ids, validation_ids, batch_size):
     train_subsampler = torch.utils.data.SubsetRandomSampler(train_ids)
     validation_subsampler = torch.utils.data.SubsetRandomSampler(validation_ids)
     
     # Define data loaders for training and testing data in this fold
-    trainloader = DataLoader(
-                      dataset, 
-                      batch_size=batch_size, sampler=train_subsampler)
-    validationloader = DataLoader(
-                      dataset,
-                      batch_size=batch_size, sampler=validation_subsampler)
+    trainloader = DataLoader(dataset, batch_size=batch_size, sampler=train_subsampler)
+    validationloader = DataLoader(dataset, batch_size=batch_size, sampler=validation_subsampler)
     return trainloader, validationloader
 
-
-#this resizes the image and converts it to a numpy array                                                                                       
-
+"""
+Method to preprocess data for random forests in np format
+"""
 def preprocess_data_random_forest(dataset):
-    # i1 = dataset["train"][0]["image"]
-    # #Rresize the image before converting to a numpy array
-    # i1 = i1.resize((1159,645))
-    # #convert to an array
-    # i1 = np.asarray(i1)
-    # #check correctness
-    # print("after")
-    # print(i1.size)
-    # print(i1.shape)
-    # #verify that the array still converts back to an image correctly
-    # data = Image.fromarray(i1) 
-    # data.save('spectrogram3.png')
-    # #this is working, image to array and back 
-
-
     def transforms(examples):
         i1 = examples["image"]
         i1 = i1.resize((1159,645))
@@ -281,16 +253,31 @@ def preprocess_data_random_forest(dataset):
 
     dataset = dataset.map(transforms, batched=False)
     dataset.set_format(type="np", columns=["label", "pixel_values"])
-    # print(dataset)
-    # print(dataset["train"])
-    # print(dataset["train"][0])
-    # print(dataset["train"][0]["pixel_values"])
     
     return dataset["train"], dataset["test"]
 
+"""
+Method to preprocess data for random forests in np format with Gaussian blur
+"""
+def preprocess_data_random_forest_with_gaussian_blur(dataset):
+    transform = Compose([ToTensor()])
+ 
+    def transforms(examples):
+        rgb = examples["image"].convert("RGB")
+        resized = rgb.resize((1159,645))
+        transformed = transform(resized)
+        transformed2 = ski.filters.gaussian(transformed, sigma=(3.0, 3.0), truncate=3.5, channel_axis=-1)
+        examples["pixel_values"] = transformed2
+        del examples["image"]
+        return examples
+
+    dataset = dataset.map(transforms, batched=False)
+    dataset.set_format(type="np", columns=["label", "pixel_values"])
+    
+    return dataset["train"], dataset["test"]
 
 """
-Method to save model state dict to disk
+Method to save model state dict
 """
 def save_model(model, save_path="model.pt"):
     torch.save(model.state_dict(), save_path)

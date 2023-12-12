@@ -3,6 +3,9 @@ import librosa.display
 import matplotlib.pyplot as plt
 import numpy as np
 
+"""
+Method to make MEL spectrogram from WAV file
+"""
 def make_spectogram(audio_file, image_filepath):
     y, sr = librosa.load(audio_file, sr=22050)
 
