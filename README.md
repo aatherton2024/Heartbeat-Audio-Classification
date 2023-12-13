@@ -17,7 +17,6 @@ You then need to change DATASET_EXISTS to false in constants.py
 You will also need to create your own Huggingface dataset and update HF_DS_PATH in constants.py
 
 Otherwise, you can use our Huggingface dataset(highly reccommended)
-<pre>
 ```bash
 git clone https://github.com/aatherton2024/Heartbeat-Audio-Classification.git
 
@@ -25,7 +24,6 @@ cd Heartbeat-Audio-Classification
 
 pip install -r requirements.txt
 ```
-</pre>
 
 ## Usage
 To train a CNN:
@@ -47,7 +45,8 @@ python train_randf.py
 ```
 
 ## Structure
-project/
+```
+Heartbeat-Audio-Classification/
 │
 ├── data/
 │   └── # Hearbeat Audio .wav files
@@ -69,3 +68,4 @@ project/
 ├── README.md
 ├── constants.py
 └── requirements.txt
+```
