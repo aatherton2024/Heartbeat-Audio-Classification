@@ -54,18 +54,18 @@ Heartbeat-Audio-Classification/
 ├── models/
 │   └── # Trained models
 │
-├── dataset_files/
-│   └── # Files to create spectrogram dataset on Huggingface from audio files
-│
 ├── images/
 │   └── # Spectrograms made from audio .wav files
-│
-├── training_files/
-│   └── # Files to train and test models
 |
-├── miscellaneous/
-│   └── # Files to define CNN class and create graphs
 ├── README.md
 ├── constants.py
 └── requirements.txt
+└── create_dataset.py
+└── create_images.py
+└── create_graphs.py
+└── pytorch_cnn.py
+└── train_model.py
+└── train_model_cv.py
+└── train_randf.py
+└── train_utils.py
 ```

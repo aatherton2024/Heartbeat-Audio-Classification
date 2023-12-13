@@ -11,12 +11,12 @@ import seaborn as sn
 from PIL import Image
 from constants import NUM_EPOCHS, BATCH_SIZE, NUM_FOLDS
 from sklearn.model_selection import KFold
-from miscellaneous.pytorch_cnn import Net
-from miscellaneous.create_graphs import cnn_plot, create_confusion_matrix_rf
+from pytorch_cnn import Net
 import os
 import skimage as ski
+from tqdm import tqdm
 
-def train_model(net, dataloader, epochs=NUM_EPOCHS, current_fold=0, validationloader=None, results=dict()):
+def train_model(net, dataloader, epochs=NUM_EPOCHS, current_fold=-1, validationloader=None, results=dict()):
     """
     Train a CNN model.
 
@@ -31,7 +31,7 @@ def train_model(net, dataloader, epochs=NUM_EPOCHS, current_fold=0, validationlo
     Returns:
     - results (dict): Updated dictionary with training results.
     """
-    print(f"Training model of fold {current_fold+1}")
+    if current_fold >= 0: print(f"Training model of fold {current_fold+1}")
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
 
@@ -126,8 +126,7 @@ def train_model_with_cv(dataset, num_epochs=NUM_EPOCHS, batch_size=BATCH_SIZE, n
                 
         print('Training process has finished. Saving trained model.')
         print('Starting testing')
-    
-    cnn_plot(results)
+
     return results
 
 def test_rf(model, xtest, ytest):
@@ -140,13 +139,13 @@ def test_rf(model, xtest, ytest):
     - ytest: True labels for test data.
 
     Returns:
-    None
+    np confusion matrix
     """
     predictions = model.predict(xtest)
     print(accuracy_score(predictions, ytest))
     mat = confusion_matrix(predictions, ytest)
     mat.tolist()
-    create_confusion_matrix_rf(mat)
+    return mat
 
 def test_model_conf_mat(net, dataloader, save_location="output.png"):
     """

@@ -1,7 +1,7 @@
 import os
 from tqdm import tqdm
 from constants import DATA_DIRECTORY, IMAGES_DIRECTORY, HF_DS_PATH
-from create_images import make_spectogram
+from create_images import build_spec
 from datasets import load_dataset
 from constants import DATA_DIRECTORY
 
@@ -35,7 +35,7 @@ def generate_all_images(directory):
             print("creating new image file")
             if not os.path.isdir(image_folder):
                 os.makedirs(image_folder)
-            make_spectogram(file_path, image_path)
+            build_spec(file_path, image_path)
 
 def create_image_dataset():
     """

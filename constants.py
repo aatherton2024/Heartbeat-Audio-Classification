@@ -1,8 +1,8 @@
 #: The directory where audio data is stored.
-DATA_DIRECTORY = "../data/DHD/audio/"  # Replace with your relative data path
+DATA_DIRECTORY = "/data/DHD/audio/"  # Replace with your relative data path
 
 #: The directory where images are stored.
-IMAGES_DIRECTORY = "../images/"  # Replace with your relative data path
+IMAGES_DIRECTORY = "/images/"  # Replace with your relative data path
 
 #: The Hugging Face dataset path used to load the dataset.
 HF_DS_PATH = "aatherton2024/heartbeat_images_final_project"
