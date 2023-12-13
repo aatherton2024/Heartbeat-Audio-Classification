@@ -3,10 +3,18 @@ import librosa.display
 import matplotlib.pyplot as plt
 import numpy as np
 
-"""
-Method to make MEL spectrogram from WAV file
-"""
-def make_spectogram(audio_file, image_filepath):
+def make_spectrogram(audio_file, image_filepath):
+    """
+    Generate a MEL spectrogram from a WAV file and save it as a PNG image.
+
+    Parameters:
+    - audio_file (str): The path to the input WAV file.
+    - image_filepath (str): The desired path to save the generated MEL spectrogram image.
+
+    Returns:
+    None
+    """
+    # Load audio file
     y, sr = librosa.load(audio_file, sr=22050)
 
     # Create mel-spectrogram

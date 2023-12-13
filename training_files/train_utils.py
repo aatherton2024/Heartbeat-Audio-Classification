@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
-from torchvision.transforms import RandomResizedCrop, Compose, Normalize, ToTensor, GaussianBlur
-from transformers import AutoImageProcessor
+from torchvision.transforms import Compose, ToTensor
 import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
@@ -9,21 +8,29 @@ import numpy as np
 from sklearn.metrics import confusion_matrix, accuracy_score
 import pandas as pd
 import seaborn as sn
-from sklearn.ensemble import RandomForestClassifier
 from PIL import Image
-from matplotlib import cm
-import copy
 from constants import NUM_EPOCHS, BATCH_SIZE, NUM_FOLDS
 from sklearn.model_selection import KFold
-from pytorch_cnn import Net
+from miscellaneous.pytorch_cnn import Net
+from miscellaneous.create_graphs import cnn_plot, create_confusion_matrix_rf
 import os
 import skimage as ski
-#from skimage.transform import resize
 
-"""
-Training loop for cnn
-"""
 def train_model(net, dataloader, epochs=NUM_EPOCHS, current_fold=0, validationloader=None, results=dict()):
+    """
+    Train a CNN model.
+
+    Parameters:
+    - net (nn.Module): The CNN model to be trained.
+    - dataloader (DataLoader): DataLoader for training data.
+    - epochs (int): Number of training epochs.
+    - current_fold (int): Current fold number for cross-validation.
+    - validationloader (DataLoader): DataLoader for validation data.
+    - results (dict): Dictionary to store training results.
+
+    Returns:
+    - results (dict): Updated dictionary with training results.
+    """
     print(f"Training model of fold {current_fold+1}")
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(net.parameters(), lr=0.001, momentum=0.9)
@@ -51,8 +58,8 @@ def train_model(net, dataloader, epochs=NUM_EPOCHS, current_fold=0, validationlo
         if (epoch + 1) % 5 == 0: 
             file_save_directory = f"cnn_model_checkpoints/fold_{current_fold + 1}/"
             file_save_path = f"cnn_model_checkpoints/fold_{current_fold + 1}/epoch_{epoch+1}.pt"
-            image_save_directory = f"conf_matrics/fold_{current_fold+1}/"
-            image_save_path = f"conf_matrics/fold_{current_fold+1}/epoch_{epoch+1}.png"
+            image_save_directory = f"conf_matrices/fold_{current_fold+1}/"
+            image_save_path = f"conf_matrices/fold_{current_fold+1}/epoch_{epoch+1}.png"
 
             if not os.path.isdir(file_save_directory):
                 os.makedirs(file_save_directory)
@@ -70,10 +77,19 @@ def train_model(net, dataloader, epochs=NUM_EPOCHS, current_fold=0, validationlo
     print('Finished Training')
     return results
 
-"""
-Function to train CNN models using cross validation
-"""
 def train_model_with_cv(dataset, num_epochs=NUM_EPOCHS, batch_size=BATCH_SIZE, num_folds=NUM_FOLDS):
+    """
+    Train CNN models using cross-validation.
+
+    Parameters:
+    - dataset (Dataset): The dataset containing training and validation data.
+    - num_epochs (int): Number of training epochs.
+    - batch_size (int): Batch size for training.
+    - num_folds (int): Number of folds for cross-validation.
+
+    Returns:
+    - results (dict): Updated dictionary with training results for every checkpoint and fold.
+    """
     def reset_weights(m):
         '''
             Try resetting model weights to avoid
@@ -93,12 +109,10 @@ def train_model_with_cv(dataset, num_epochs=NUM_EPOCHS, batch_size=BATCH_SIZE, n
     # Define the K-fold Cross Validator
     kfold = KFold(n_splits=num_folds, shuffle=True)
         
-    # Start print
     print('--------------------------------')
 
     # K-fold Cross Validation model evaluation
     for fold, (train_ids, validation_ids) in enumerate(kfold.split(dataset["train"])):
-        # Print
         print(f'FOLD {fold}')
         print('--------------------------------')
         
@@ -110,36 +124,42 @@ def train_model_with_cv(dataset, num_epochs=NUM_EPOCHS, batch_size=BATCH_SIZE, n
         
         train_model(network, trainloader, num_epochs, fold, validationloader, results)
                 
-        # Process is complete.
         print('Training process has finished. Saving trained model.')
-
-        # Print about testing
         print('Starting testing')
-        
+    
+    cnn_plot(results)
+    return results
 
-    print(results)
-    # Print fold results
-    print(f'K-FOLD CROSS VALIDATION RESULTS FOR {num_folds} FOLDS')
-    print('--------------------------------')
-    sum = 0.0
-    for key, value in results.items():
-        print(f'Fold {key}: {value} %')
-        sum += value
-    print(f'Average: {sum/len(results.items())} %')
-
-
-"""
-Method to test random forest
-"""
 def test_rf(model, xtest, ytest):
+    """
+    Test a random forest model.
+
+    Parameters:
+    - model: The trained random forest model.
+    - xtest: Test data.
+    - ytest: True labels for test data.
+
+    Returns:
+    None
+    """
     predictions = model.predict(xtest)
     print(accuracy_score(predictions, ytest))
-    print(confusion_matrix(predictions, ytest))
+    mat = confusion_matrix(predictions, ytest)
+    mat.tolist()
+    create_confusion_matrix_rf(mat)
 
-"""
-Test CNN and generate confidence matrix
-"""
 def test_model_conf_mat(net, dataloader, save_location="output.png"):
+    """
+    Test a CNN model and generate a confusion matrix.
+
+    Parameters:
+    - net (nn.Module): The trained CNN model.
+    - dataloader (DataLoader): DataLoader for test data.
+    - save_location (str): Path to save the generated confusion matrix image.
+
+    Returns:
+    - score (float): Accuracy score of the CNN model on the test data.
+    """
     y_pred = []
     y_true = []
     total = 0.0
@@ -174,20 +194,35 @@ def test_model_conf_mat(net, dataloader, save_location="output.png"):
     print(f'Accuracy of the network on the test images: {100 * correct // total} %')
     return 100 * correct // total
 
-"""
-Method to display tensor as a png
-"""
 def img_show(img):
+    """
+    Display a tensor as a PNG image.
+
+    Parameters:
+    - img: The input tensor.
+
+    Returns:
+    None
+    """
     tensor_image = img
     tensor_image = tensor_image.view(tensor_image.shape[2], tensor_image.shape[0], tensor_image.shape[1])
     tensor_image = tensor_image.view(tensor_image.shape[2], tensor_image.shape[0], tensor_image.shape[1])
     plt.imshow(tensor_image)
     plt.show()
 
-"""
-Normalize and resize images, convert to tensors, return dataloaders
-""" 
 def preprocess_data(dataset, batch_size=4):
+    """
+    Preprocess data by normalizing, resizing, and converting to tensors.
+
+    Parameters:
+    - dataset: The input dataset.
+    - batch_size (int): Batch size for data loaders.
+
+    Returns:
+    - dataset (Dataset): Preprocessed dataset.
+    - trainloader (DataLoader): DataLoader for training data.
+    - testloader (DataLoader): DataLoader for test data.
+    """
     transform = Compose([ToTensor()])
  
     def transforms(examples):
@@ -205,10 +240,19 @@ def preprocess_data(dataset, batch_size=4):
     testloader = DataLoader(dataset["test"], batch_size=batch_size)
     return dataset, trainloader, testloader  
 
-"""
-Normalize and resize images and add gaussian blur, convert to tensors, return dataloaders
-"""
 def preprocess_data_with_gaussian_noise(dataset, batch_size=4):
+    """
+    Preprocess data by normalizing, resizing, adding Gaussian blur, and converting to tensors.
+
+    Parameters:
+    - dataset: The input dataset.
+    - batch_size (int): Batch size for data loaders.
+
+    Returns:
+    - dataset (Dataset): Preprocessed dataset.
+    - trainloader (DataLoader): DataLoader for training data.
+    - testloader (DataLoader): DataLoader for test data.
+    """
     transform = Compose([ToTensor()])
  
     def transforms(examples):
@@ -226,10 +270,20 @@ def preprocess_data_with_gaussian_noise(dataset, batch_size=4):
     testloader = DataLoader(dataset["test"], batch_size=batch_size)
     return dataset, trainloader, testloader 
 
-"""
-Method to create data loaders for cross validation
-"""
 def cross_validation_dataloaders(dataset, train_ids, validation_ids, batch_size):
+    """
+    Create data loaders for cross-validation.
+
+    Parameters:
+    - dataset: The input dataset.
+    - train_ids: Indices for training data.
+    - validation_ids: Indices for validation data.
+    - batch_size (int): Batch size for data loaders.
+
+    Returns:
+    - trainloader (DataLoader): DataLoader for training data.
+    - validationloader (DataLoader): DataLoader for validation data.
+    """
     train_subsampler = torch.utils.data.SubsetRandomSampler(train_ids)
     validation_subsampler = torch.utils.data.SubsetRandomSampler(validation_ids)
     
@@ -238,10 +292,17 @@ def cross_validation_dataloaders(dataset, train_ids, validation_ids, batch_size)
     validationloader = DataLoader(dataset, batch_size=batch_size, sampler=validation_subsampler)
     return trainloader, validationloader
 
-"""
-Method to preprocess data for random forests in np format
-"""
 def preprocess_data_random_forest(dataset):
+    """
+    Preprocess data for random forests in np format.
+
+    Parameters:
+    - dataset: The input dataset.
+
+    Returns:
+    - train_data (numpy.ndarray): Preprocessed training data.
+    - test_data (numpy.ndarray): Preprocessed test data.
+    """
     def transforms(examples):
         i1 = examples["image"]
         i1 = i1.resize((1159,645))
@@ -256,10 +317,17 @@ def preprocess_data_random_forest(dataset):
     
     return dataset["train"], dataset["test"]
 
-"""
-Method to preprocess data for random forests in np format with Gaussian blur
-"""
 def preprocess_data_random_forest_with_gaussian_blur(dataset):
+    """
+    Preprocess data for random forests in np format with Gaussian blur.
+
+    Parameters:
+    - dataset: The input dataset.
+
+    Returns:
+    - train_data (numpy.ndarray): Preprocessed training data.
+    - test_data (numpy.ndarray): Preprocessed test data.
+    """
     transform = Compose([ToTensor()])
  
     def transforms(examples):
@@ -276,8 +344,15 @@ def preprocess_data_random_forest_with_gaussian_blur(dataset):
     
     return dataset["train"], dataset["test"]
 
-"""
-Method to save model state dict
-"""
 def save_model(model, save_path="model.pt"):
+    """
+    Save the state dict of a model.
+
+    Parameters:
+    - model: The model to be saved.
+    - save_path (str): Path to save the model.
+
+    Returns:
+    None
+    """
     torch.save(model.state_dict(), save_path)
