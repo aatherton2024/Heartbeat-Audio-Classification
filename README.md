@@ -1,36 +1,71 @@
-# CSCI-374-Final-Project
-Computer Vision ML Task on Hearbeat Noise Dataset
+# Hearbeat Audio Computer Vision Project
 
-Project Flow:
-1. Generate images ✅
-2. Create hugginface dataset with train test splits ✅
-3. Make model class from generic PyTorch framework 🟡
-4. Test model 🟡
-5. Use other model frameworks and play around with hyperparameters 🔴
-6. Write paper 🔴
-7. Win CS project of the year 🔴
+## Table of Contents
+1. [Introduction](#introduction)
+2. [Installation](#installation)
+3. [Usage](#usage)
+4. [Folder Structure](#Structure)
 
-Considerations:
- - CAN ALSO ENCODE AUDIO FILES AS TENSORS, THEN TRAIN ON THAT
- - Dataset is too small to sufficiently train model, will likely need to bag/boost or provide synthetic or additional data
- - Need to train on several model architectures and on other ML frameworks, such as random forests
- - Dataset will (potentially) need to be regenerated with shorter recordings padded to max recording length
+## Introduction
+This is a repository containing code to train and test a Convolutional Neural Network and a Random Forest Classifier to perform classification on heartbeat audio. The goal of this project was to accurately classify hearbeat audio within five classes: artifact, extrahls, extrastole, murmur, and normal. The main contributions of this project are three fold. We first created a framework to convert a Kaggle dataset of hearbeat .wav audio files into a publicy-accessible Huggingface dataset of spectrograms and their corresponding class labels. We then provided the framework to train and test a CNN and Random Forest on the data using cross-validation. We finally provide the framework to evaluate model performance on test data and test data with added noise using confusion matrices.
 
- Folders:
- - Data: folder stores all imported data from kaggle dataset (empty at the moment, will eventually want to redownload data)
- - Model: folder stores all saved model checkpoints
-    - subfolders for each model implementation
+## Installation
+To run everything from scratch, you must first download the data from Kaggle and store it in the data folder:
+https://www.kaggle.com/datasets/mersico/dangerous-heartbeat-dataset-dhd
 
-Files:
- - constants.py: file containing constants allowing for easy model adjustment
- - create_images.py: file to create spectogram image files for each audio file
- - create_dataset.py: file to create hf style dataset from csvs with paths to audio and image files for each entry
- - train_model.py: file to train model and store model class
- - test_model.py: file to test model's ability to classify never seen before heartbeat audio
- - run.sh: bash scripting file to run code on school's GPUs (faster training)
+You then need to change DATASET_EXISTS to false in constants.py
+You will also need to create your own Huggingface dataset and update HF_DS_PATH in constants.py
 
-Usage:
- - To load in hf dataset: dataset = load_dataset("aatherton2024/heartbeat_images_final_project")
-    - Observe that the data folder will be empty as there is no need for audio recordings at the moment
- - Kaggle data: https://www.kaggle.com/datasets/mersico/dangerous-heartbeat-dataset-dhd
+Otherwise, you can use our Huggingface dataset(highly reccommended)
+<pre>
+```bash
+git clone https://github.com/aatherton2024/Heartbeat-Audio-Classification.git
 
+cd Heartbeat-Audio-Classification
+
+pip install -r requirements.txt
+```
+</pre>
+
+## Usage
+To train a CNN:
+```bash
+cd training_files
+python train_model.py
+```
+
+To train CNNs using cross validation:
+```bash
+cd training_files
+python train_model_cv.py
+```
+
+To train Random Forests:
+```bash
+cd training_files
+python train_randf.py
+```
+
+## Structure
+project/
+│
+├── data/
+│   └── # Hearbeat Audio .wav files
+│
+├── models/
+│   └── # Trained models
+│
+├── dataset_files/
+│   └── # Files to create spectrogram dataset on Huggingface from audio files
+│
+├── images/
+│   └── # Spectrograms made from audio .wav files
+│
+├── training_files/
+│   └── # Files to train and test models
+|
+├── miscellaneous/
+│   └── # Files to define CNN class and create graphs
+├── README.md
+├── constants.py
+└── requirements.txt
