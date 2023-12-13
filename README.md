@@ -45,7 +45,8 @@ python train_randf.py
 ```
 
 ## Structure
-project/
+```
+Heartbeat-Audio-Classification/
 │
 ├── data/
 │   └── # Hearbeat Audio .wav files
@@ -67,3 +68,4 @@ project/
 ├── README.md
 ├── constants.py
 └── requirements.txt
+```
