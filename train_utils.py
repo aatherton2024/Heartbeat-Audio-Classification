@@ -70,7 +70,8 @@ def train_model(net, dataloader, epochs=NUM_EPOCHS, current_fold=-1, validationl
             try:
                 score = test_model_conf_mat(net, validationloader, image_save_path)
             except:
-                score = 60.0
+                score = 0.0
+                printf("Error training in model in fold {current_fold} epoch {epoch}")
             results[current_fold + 1][epoch + 1] = score
             print(f"Model of fold {current_fold+1} had score {score} on epoch {epoch+1}")
             
