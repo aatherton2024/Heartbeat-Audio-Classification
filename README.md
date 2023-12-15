@@ -28,19 +28,16 @@ pip install -r requirements.txt
 ## Usage
 To train a CNN:
 ```bash
-cd training_files
 python train_model.py
 ```
 
 To train CNNs using cross validation:
 ```bash
-cd training_files
 python train_model_cv.py
 ```
 
 To train Random Forests:
 ```bash
-cd training_files
 python train_randf.py
 ```
 
